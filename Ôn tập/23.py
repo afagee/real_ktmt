@@ -5,7 +5,7 @@ import time
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-buttons = {'BT_1': 21, 'BT_2': 26, 'BT3': 20}
+buttons = {'BT_1': 21, 'BT_2': 26, 'BT_3': 20}
 for button in buttons.values():
     GPIO.setup(button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
