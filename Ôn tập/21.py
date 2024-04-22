@@ -17,6 +17,7 @@ import RPi.GPIO as GPIO
 import time
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
+
 Led = 13
 BT_1 = 21
 BT_2 = 26
@@ -38,9 +39,11 @@ direction = 0
 def motor_control():
     global speed, direction
     GPIO.output(DIR, direction)
+    speed1 = speed
     if direction != 0:
-        speed_ = 100 - speed
-    pwm.ChangeDutyCycle(speed)
+        speed1 = 100 - speed
+    pwm.ChangeDutyCycle(speed1)
+    GPIO.output(Led, GPIO.HIGH if speed >= 80 else GPIO.LOW)
 
 
 def button_1_pressed():
@@ -50,59 +53,75 @@ def button_1_pressed():
     if speed >= 100:
         speed = 100
     motor_control()
-
+    print(speed)
 
 def button_2_pressed():
-    global speed
     global speed, direction
     direction = 1
     speed += 10
     if speed >= 100:
         speed = 100
     motor_control()
+    print(speed)
 
 def button_3_pressed():
     global speed
     speed = 0
     motor_control()
+    print(speed)
 
 def button_no_pressed():
     global speed
     speed -= 10
     speed = max(0, speed)
     motor_control()
+    print(speed)
 
 def main():
-    motor_control()
-
     current_time = 0
     time_from = time.time()
     time_end = time.time()
-
+    global speed
     while True:
+        motor_control()
         time_end = time.time()
-        current_time = time_end - time_from
+        current_time += time_end - time_from
         time_from = time.time()
         if GPIO.input(BT_1) == GPIO.LOW:
+            print("1")
             button_1_pressed()
             while GPIO.input(BT_1) == GPIO.LOW:
+                print("1")
+                time_end = time.time()
+                current_time += time_end - time_from
+                time_from = time.time()
                 if current_time >= 1:
                     button_1_pressed()
                     current_time -= 1
+                time.sleep(0.1)
+
         elif GPIO.input(BT_2) == GPIO.LOW:
+            print("2")
             button_2_pressed()
             while GPIO.input(BT_2) == GPIO.LOW:
+                print("2")
+                time_end = time.time()
+                current_time += time_end - time_from
+                time_from = time.time()
                 if current_time >= 1:
                     button_2_pressed()
                     current_time -= 1
+                time.sleep(0.1)
+
         elif GPIO.input(BT_3) == GPIO.LOW:
+            print("3")
             button_3_pressed()
+
         else:
             if current_time >= 1:
                 button_no_pressed()
                 current_time -= 1
-
-        GPIO.output(Led, GPIO.HIGH if speed >= 80 else GPIO.LOW)
+        time.sleep(0.15)
 
 
 try:
