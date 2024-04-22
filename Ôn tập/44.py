@@ -35,7 +35,6 @@ GPIO.setup(BT3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BT4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
-
 def lcd_init():
     for pin in LCD_PINS.values():
         GPIO.setup(pin, GPIO.OUT)
@@ -78,13 +77,16 @@ def lcd_display_string(message, line):
     for char in message:
         lcd_byte(ord(char), LCD_CHR)
 
+
 spi = spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz = 10000000
 spi.mode = 0x00
 
+
 def max7219_write(register, data):
     spi.xfer2([register, data])
+
 
 def max7219_init():
     max7219_write(0x0C, 0x01)
@@ -92,6 +94,7 @@ def max7219_init():
     max7219_write(0x09, 0x00)
     max7219_write(0x0A, 0x00)
     max7219_write(0x0F, 0x00)
+
 
 def create_text_image(text, width, height):
     image = Image.new('1', (width, height), 0)
@@ -101,6 +104,7 @@ def create_text_image(text, width, height):
     text_position = (1, -1)
     draw.text(text_position, text, font=font, fill=1)
     return image
+
 
 def display_image(image):
     pixels = np.array(image)
@@ -115,6 +119,7 @@ def display_image(image):
 def clear_matrix():
     max7219_write(0x0c, 0x00)
 
+
 def LED_matrix(floor):
     max7219_init()
     while True:
@@ -124,16 +129,23 @@ def LED_matrix(floor):
         display_image(image)
         time.sleep(0.1)
 
+
 PWM = 24
 DIR = 25
 GPIO.setup(PWM, GPIO.OUT)
 GPIO.setup(DIR, GPIO.OUT)
 pwm_dir = GPIO.PWM(PWM, 1000)
 pwm_dir.start(0)
+speed = 0
+direction = 0
 
-def motor_control(speed, direction):
+def motor_control():
+    global speed, direction
     GPIO.output(DIR, direction)
-    pwm_dir.ChangeDutyCycle(speed)
+    speed1 = speed
+    if direction != 0:
+        speed1 = 100 - speed
+    pwm_dir.ChangeDutyCycle(speed1)
 
 
 SERVO = 6
@@ -151,42 +163,60 @@ def set_servo_angle(angle):
     pwm_servo.ChangeDutyCycle(0)
 
 
-current_floor = 0
+current_floor = 1
 
-def button_pressed(floor):
-    global current_floor
-    dc_control = (current_floor - floor) * 50
-    direction = dc_control / abs(dc_control)
-    dc_control = abs(dc_control)
-
-    if dc_control:
-        if direction == -1:
-            lcd_display_string("Dang di len", 1)
-        else:
-            lcd_display_string("Dang di xuong", 1)
-        motor_control(dc_control, direction)
-        time.sleep(0.15 * abs(current_floor - 1))
-        lcd_display_string("Mo cua", 1)
-        set_servo_angle(180)
-        time.sleep(1)
-        lcd_display_string("Dong cua", 1)
-        set_servo_angle(0)
-        time.sleep(0.15)
-        lcd_clear()
-
+def display_floor(floor):
     text = str(floor)
     width, height = 8, 8
     image = create_text_image(text, width, height)
-    display_image(image)
+    flipped_image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    display_image(flipped_image)
+
+def button_pressed(floor):
+    global current_floor, speed, direction
+    if current_floor - floor == 0:
+        return
+    speed = 50
+    direction = 0 if current_floor - floor > 0 else 1
+
+    if direction == 1:
+        lcd_display_string("Dang di len", 1)
+    else:
+        lcd_display_string("Dang di xuong", 1)
+
+    motor_control()
+    time.sleep(1.5)
+    if current_floor < floor:
+        for i in range(current_floor + 1, floor + 1, 1):
+            display_floor(i)
+            time.sleep(1.5)
+    else:
+        for i in range(current_floor - 1, floor - 1, -1):
+            display_floor(i)
+            time.sleep(1.5)
+    speed = 0
+    motor_control()
     time.sleep(0.15)
+
+    lcd_display_string("Mo cua", 1)
+    set_servo_angle(180)
+    time.sleep(1)
+    lcd_display_string("Dong cua", 1)
+    set_servo_angle(0)
+    time.sleep(0.15)
+    lcd_clear()
 
     current_floor = floor
 
+
 def main():
+    clear_matrix()
     lcd_init()
     lcd_clear()
     max7219_init()
+    motor_control()
 
+    display_floor(1)
     while True:
         if GPIO.input(BT1) == GPIO.LOW:
             button_pressed(1)
@@ -196,10 +226,12 @@ def main():
             button_pressed(3)
         if GPIO.input(BT4) == GPIO.LOW:
             button_pressed(4)
+        time.sleep(0.1)
+
 
 try:
     main()
 except KeyboardInterrupt:
     clear_matrix()
     spi.close()
-
+    GPIO.cleanup()
