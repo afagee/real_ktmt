@@ -114,7 +114,7 @@ def main():
             time_from = 0
             current_time = 0
             set_servo_angle(120)
-            motor_control(50, 0)
+            motor_control(30, 0)
             rem_state = 1
         else:
             motor_control(30, 1)
@@ -122,7 +122,7 @@ def main():
             if time_from == 0:
                 time_from = time.time()
             current_time = time.time()
-            if current_time - time_from > 3:
+            if rem_state == 1 and current_time - time_from > 3:
                 set_servo_angle(30)
                 rem_state = 0
 
