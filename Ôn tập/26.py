@@ -59,6 +59,7 @@ def lcd_byte(bits, mode):
     time.sleep(E_DELAY)
 
 def lcd_display_string(message, line):
+    lcd_clear()
     lcd_byte(line, LCD_CMD)
     for char in message:
         lcd_byte(ord(char), LCD_CHR)
