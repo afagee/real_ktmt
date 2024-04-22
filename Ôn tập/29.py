@@ -82,26 +82,25 @@ def main():
     GPIO.output(LCD_PINS['BL'], True)
     global pulse_end, pulse_start
     while True:
-        if GPIO.input(BT_1) == 0:
-            lcd_display_string("Dang thuc hien do", 1)
-            time.sleep(2)
-            GPIO.output(TRIG, True)
-            time.sleep(0.00001)
-            GPIO.output(TRIG, False)
-            while GPIO.input(ECHO) == 0:
-                pulse_start = time.time()
-            while GPIO.input(ECHO) == 1:
-                pulse_end = time.time()
-            pulse_duration = pulse_end - pulse_start
-            distance = pulse_duration * 17150
-            distance = round(distance, 2)
-            if distance > 100:
-                lcd_display_string("ERROR", 1)
-            else:
-                lcd_display_string("Distance: %scm" % distance, 1)
-
+        time.sleep(2)
+        GPIO.output(TRIG, True)
+        time.sleep(0.00001)
+        GPIO.output(TRIG, False)
+        while GPIO.input(ECHO) == 0:
+            pulse_start = time.time()
+        while GPIO.input(ECHO) == 1:
+            pulse_end = time.time()
+        pulse_duration = pulse_end - pulse_start
+        distance = pulse_duration * 17150
+        distance = round(distance, 2)
+        if distance > 100:
+            lcd_display_string("ERROR", 1)
+        else:
+            lcd_display_string("Distance: %scm" % distance, 1)
             if distance > 10:
                 motor_control(50, 0)
+            else:
+                motor_control(0, 0)
 
 
 try:
