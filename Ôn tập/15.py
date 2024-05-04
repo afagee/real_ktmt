@@ -1,4 +1,5 @@
-# Viết chương trình đọc giá trị nhiệt độ, độ ẩm không khí sử dụng cảm biến DHT11. Hiển thị các giá trị nhiệt độ, độ ẩm đọc được lên màn hình LCD.
+# Viết chương trình đọc giá trị nhiệt độ, độ ẩm không khí sử dụng cảm biến DHT11.
+# Hiển thị các giá trị nhiệt độ, độ ẩm đọc được lên màn hình LCD.
 import RPi.GPIO as GPIO
 import time
 
