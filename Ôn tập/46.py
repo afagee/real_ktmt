@@ -8,6 +8,7 @@
 # động cơ sẽ dừng ngay lập tức.
 import RPi.GPIO as GPIO
 import time
+import cv2
 from multiprocessing import Value, Process
 
 GPIO.setmode(GPIO.BCM)
@@ -25,8 +26,15 @@ E_DELAY = 0.0005
 BT_1 = 21
 BT_2 = 26
 BT_3 = 20
+BT_4 = 19
 PWM = 24
 DIR = 25
+TRIG = 15
+ECHO = 4
+
+GPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+GPIO.output(TRIG, False)
 GPIO.setup(BT_1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BT_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BT_3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -77,6 +85,8 @@ pwm.start(0)
 speed = 0
 direction = 0
 
+cap = cv2.VideoCapture(0)
+out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
 
 def motor_control():
     global speed, direction
@@ -88,9 +98,100 @@ def motor_control():
     lcd_state()
 
 
-def handle_BT1():
+def handle_BT1(pressed_button):
+    global speed, direction, cap, out
 
-    pass
+    pulse_end = 0
+    pulse_start = 0
+
+    while True:
+        if GPIO.input(BT_1) == GPIO.LOW:
+            cap = cv2.VideoCapture(0)
+            out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
+            cv2.namedWindow('Camera')
+
+            pressed_button.value = 1
+            speed = 20
+            direction = 0
+            motor_control()
+
+        while True:
+            if pressed_button.value == 1:
+                GPIO.output(TRIG, True)
+                time.sleep(0.00001)
+                GPIO.output(TRIG, False)
+                while GPIO.input(ECHO) == 0:
+                    pulse_start = time.time()
+                while GPIO.input(ECHO) == 1:
+                    pulse_end = time.time()
+                pulse_duration = pulse_end - pulse_start
+                distance = pulse_duration * 17150
+                distance = round(distance, 2)
+                lcd_display_string("Mode 1", 1)
+                lcd_display_string("Dis:" + str(distance), 2)
+
+                _, scr = cap.read()
+                cv2.imshow('Camera', scr)
+                if distance < 10:
+                    out.write(scr)
+
+def handle_BT2(pressed_button):
+    global speed, direction, cap, out
+
+    while True:
+        if GPIO.input(BT_2) == GPIO.LOW:
+            pressed_button.value = 2
+            cap.release()
+            out.release()
+            cv2.destroyAllWindows()
+
+            speed = 20
+            direction = 1
+            motor_control()
+
+
+def handle_BT3():
+    global speed, direction, cap, out
+
+    time_end = 0
+    time_from = 0
+    current_time = 0
+
+    while True:
+        if GPIO.input(BT_3) == GPIO.LOW:
+
+            current_time = 0
+            while GPIO.input(BT_3) == GPIO.LOW:
+                time_end = time.time()
+                current_time += time_end - time_from
+                time_from = time.time()
+                if current_time >= 1:
+                    speed += 10
+                    if speed >= 100:
+                        speed = 100
+                    motor_control()
+                    current_time -= 1
+                time.sleep(0.1)
+
+        time_end = time.time()
+        current_time += time_end - time_from
+        time_from = time.time()
+        if current_time >= 1:
+            speed -= 10
+            if speed >= 10:
+                speed = 10
+            motor_control()
+            current_time -= 1
+        time.sleep(0.1)
+
+
+def handle_BT4():
+    global speed, direction, cap, out
+    while True:
+        if GPIO.input(BT_4) == GPIO.LOW:
+            speed = 0
+            motor_control()
+
 
 def lcd_state():
     global direction, speed
@@ -99,15 +200,13 @@ def lcd_state():
 def main():
     lcd_init()
     GPIO.output(LCD_PINS['BL'], True)
-    current_time = 0
-    time_from = time.time()
-    time_end = time.time()
-    global speed
-    while True:
-        motor_control()
-        time_end = time.time()
-        current_time += time_end - time_from
-        time_from = time.time()
+
+    pressed_button = Value('d', 0)
+
+    Process(target=handle_BT1, args=pressed_button).start()
+    Process(target=handle_BT2, args=pressed_button).start()
+    Process(target=handle_BT3).start()
+    Process(target=handle_BT4).start()
 
 
 try:
