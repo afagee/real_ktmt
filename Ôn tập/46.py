@@ -38,6 +38,7 @@ GPIO.output(TRIG, False)
 GPIO.setup(BT_1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BT_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BT_3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(BT_4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(PWM, GPIO.OUT)
 GPIO.setup(DIR, GPIO.OUT)
 
@@ -85,9 +86,6 @@ pwm.start(0)
 speed = 0
 direction = 0
 
-cap = cv2.VideoCapture(0)
-out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
-
 def motor_control():
     global speed, direction
     GPIO.output(DIR, direction)
@@ -95,72 +93,49 @@ def motor_control():
     if direction != 0:
         speed1 = 100 - speed
     pwm.ChangeDutyCycle(speed1)
-    lcd_state()
 
 
-def handle_BT1(pressed_button):
-    global speed, direction, cap, out
+def main():
+    global speed, direction
+    lcd_init()
+    GPIO.output(LCD_PINS['BL'], True)
 
+    pressed_button = 0
+    direction = 0
+
+    GPIO.output(DIR, 0)
+    cap = cv2.VideoCapture(0)
+    out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
+    cv2.namedWindow('Camera')
+
+    time_end = 0
+    time_from = 0
+    current_time = 0
     pulse_end = 0
     pulse_start = 0
 
     while True:
         if GPIO.input(BT_1) == GPIO.LOW:
-            cap = cv2.VideoCapture(0)
-            out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
             cv2.namedWindow('Camera')
+            pressed_button = 1
 
-            pressed_button.value = 1
             speed = 20
             direction = 0
             motor_control()
 
-        while True:
-            if pressed_button.value == 1:
-                GPIO.output(TRIG, True)
-                time.sleep(0.00001)
-                GPIO.output(TRIG, False)
-                while GPIO.input(ECHO) == 0:
-                    pulse_start = time.time()
-                while GPIO.input(ECHO) == 1:
-                    pulse_end = time.time()
-                pulse_duration = pulse_end - pulse_start
-                distance = pulse_duration * 17150
-                distance = round(distance, 2)
-                lcd_display_string("Mode 1", 1)
-                lcd_display_string("Dis:" + str(distance), 2)
-
-                _, scr = cap.read()
-                cv2.imshow('Camera', scr)
-                if distance < 10:
-                    out.write(scr)
-
-def handle_BT2(pressed_button):
-    global speed, direction, cap, out
-
-    while True:
         if GPIO.input(BT_2) == GPIO.LOW:
-            pressed_button.value = 2
-            cap.release()
-            out.release()
+            lcd_display_string("Mode 2", 1)
+            pressed_button = 2
             cv2.destroyAllWindows()
 
             speed = 20
             direction = 1
             motor_control()
 
-
-def handle_BT3():
-    global speed, direction, cap, out
-
-    time_end = 0
-    time_from = 0
-    current_time = 0
-
-    while True:
         if GPIO.input(BT_3) == GPIO.LOW:
-
+            time_end = time.time()
             current_time = 0
+            time_from = time.time()
             while GPIO.input(BT_3) == GPIO.LOW:
                 time_end = time.time()
                 current_time += time_end - time_from
@@ -169,44 +144,50 @@ def handle_BT3():
                     speed += 10
                     if speed >= 100:
                         speed = 100
-                    motor_control()
                     current_time -= 1
+                motor_control()
                 time.sleep(0.1)
+        else:
+            time_end = time.time()
+            current_time += time_end - time_from
+            time_from = time.time()
+            if current_time >= 1:
+                speed -= 10
+                if speed >= 20:
+                    speed = 20
+                current_time -= 1
 
-        time_end = time.time()
-        current_time += time_end - time_from
-        time_from = time.time()
-        if current_time >= 1:
-            speed -= 10
-            if speed >= 10:
-                speed = 10
-            motor_control()
-            current_time -= 1
-        time.sleep(0.1)
-
-
-def handle_BT4():
-    global speed, direction, cap, out
-    while True:
         if GPIO.input(BT_4) == GPIO.LOW:
             speed = 0
             motor_control()
 
+        if pressed_button == 1:
 
-def lcd_state():
-    global direction, speed
-    pass
+            GPIO.output(TRIG, True)
+            time.sleep(0.00001)
+            GPIO.output(TRIG, False)
+            while GPIO.input(ECHO) == 0:
+                pulse_start = time.time()
+            while GPIO.input(ECHO) == 1:
+                pulse_end = time.time()
+            pulse_duration = pulse_end - pulse_start
+            dis = pulse_duration * 17150
+            dis = round(dis, 2)
+            distance = dis
+            # cd_display_string(str(distance.value), 1)
+            if distance > 30:
+                lcd_clear()
+            time.sleep(0.1)
+            lcd_display_string("Mode 1", 1)
+            lcd_display_string("Dis:" + str(distance), 2)
 
-def main():
-    lcd_init()
-    GPIO.output(LCD_PINS['BL'], True)
+            _, scr = cap.read()
+            cv2.imshow('Camera', scr)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                continue
+            if distance < 10:
+                out.write(scr)
 
-    pressed_button = Value('d', 0)
-
-    Process(target=handle_BT1, args=pressed_button).start()
-    Process(target=handle_BT2, args=pressed_button).start()
-    Process(target=handle_BT3).start()
-    Process(target=handle_BT4).start()
 
 
 try:

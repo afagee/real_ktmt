@@ -40,6 +40,7 @@ GPIO.setup(DIR, GPIO.OUT)
 pwm = GPIO.PWM(PWM, 1000)
 pwm.start(0)
 
+
 def motor_control(speed, direction):
     GPIO.output(DIR, direction)
     pwm.ChangeDutyCycle(speed)
@@ -55,6 +56,7 @@ def lcd_init():
     lcd_byte(0x0C, LCD_CMD)
     lcd_byte(0x06, LCD_CMD)
     lcd_byte(0x01, LCD_CMD)
+
 
 def lcd_clear():
     lcd_byte(0x01, LCD_CMD)
@@ -79,6 +81,7 @@ def lcd_byte(bits, mode):
     GPIO.output(LCD_PINS['E'], False)
     time.sleep(E_DELAY)
 
+
 def lcd_display_string(message, line):
     lcd_byte(line, LCD_CMD)
     for char in message:
@@ -98,8 +101,13 @@ def handle_distance(distance):
         while GPIO.input(ECHO) == 1:
             pulse_end = time.time()
         pulse_duration = pulse_end - pulse_start
-        distance.value = pulse_duration * 17150
-        distance.value = round(distance, 2)
+        dis = pulse_duration * 17150
+        dis = round(dis, 2)
+        distance.value = dis
+        # cd_display_string(str(distance.value), 1)
+        if distance.value > 30:
+            lcd_clear()
+        time.sleep(1)
 
 
 def handle_LED(distance):
@@ -110,13 +118,34 @@ def handle_LED(distance):
             time.sleep(1)
         else:
             GPIO.output(LED, GPIO.LOW)
+            time.sleep(1)
 
-def handle_mode(distance):
-    cap = cv2.VideoCapture(0)
+
+def main():
+    lcd_init()
+    GPIO.output(LCD_PINS['BL'], True)
+    distance = Value('d', 0)
+    speed = Value('d', 0)
+    GPIO.output(DIR, 0)
+    Process(target=handle_distance, args=(distance,)).start()
+    Process(target=handle_LED, args=(distance,)).start()
+
+    name_window = "Camera User"
+    capture = cv2.VideoCapture(0)
     out = cv2.VideoWriter('output.avi', fourcc=cv2.VideoWriter_fourcc(*'MJPG'), fps=20.0, frameSize=(640, 490))
-    cv2.namedWindow('Camera')
 
     while True:
+        motor_control(speed.value, 0)
+        _, scr = capture.read()
+
+        if distance.value < 20:
+            cv2.imshow(name_window, scr)
+        else:
+            cv2.destroyAllWindows()
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            continue
+
         if 20 > distance.value >= 10:
             lcd_display_string("Muc 2", 1)
             GPIO.output(RELAY1, GPIO.HIGH)
@@ -127,22 +156,11 @@ def handle_mode(distance):
 
         if distance.value < 10:
             lcd_display_string("Muc 3", 1)
-            motor_control(50, 0)
-
-        _, scr = cap.read()
-        if distance < 20:
-            cv2.imshow('Camera', scr)
-        if distance < 10:
+            speed.value = 50
             out.write(scr)
-
-
-def main():
-    lcd_init()
-    GPIO.output(LCD_PINS['BL'], True)
-    distance = Value('d', 0)
-    Process(target=handle_distance, args=distance).start()
-    Process(target=handle_LED, args=distance).start()
-    Process(target=handle_mode, args=distance).start()
+        else:
+            speed.value = 0
+        time.sleep(0.1)
 
 
 try:
