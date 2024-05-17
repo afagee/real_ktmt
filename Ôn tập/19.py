@@ -53,7 +53,7 @@ def button_2_pressed():
 
     if speed >= 100:
         speed = 100
-    motor_control(speed, 0)
+    motor_control(speed, 1)
 
 
 def main():
