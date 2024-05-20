@@ -105,24 +105,24 @@ def main():
             distance = round(distance, 2)
             if distance > 100:
                 lcd_display_string("Không có vật cản", 1)
-                GPIO.output(LED, GPIO.HIGH)
-                GPIO.output(RELAY1, GPIO.HIGH)
+                GPIO.output(LED, GPIO.LOW)
+                GPIO.output(RELAY1, GPIO.LOW)
             else:
                 if 50 < distance < 100:
-                    GPIO.output(LED, GPIO.LOW)
-                    GPIO.output(RELAY1, GPIO.HIGH)
+                    GPIO.output(LED, GPIO.HIGH)
+                    GPIO.output(RELAY1, GPIO.LOW)
                     motor_control(0, 0)
                     lcd_display_string("Canh bao 1", 1)
                     lcd_display_string("Distance: %scm" % distance, 2)
                 elif 25 < distance <= 50:
-                    GPIO.output(LED, GPIO.LOW)
-                    GPIO.output(RELAY1, GPIO.LOW)
+                    GPIO.output(LED, GPIO.HIGH)
+                    GPIO.output(RELAY1, GPIO.HIGH)
                     motor_control(0, 0)
                     lcd_display_string("Canh bao 2", 1)
                     lcd_display_string("Distance: %scm" % distance, 2)
                 else:
-                    GPIO.output(LED, GPIO.LOW)
-                    GPIO.output(RELAY1, GPIO.LOW)
+                    GPIO.output(LED, GPIO.HIGH)
+                    GPIO.output(RELAY1, GPIO.HIGH)
                     motor_control(50, 0)
                     lcd_display_string("Canh bao 3", 1)
                     lcd_display_string("Distance: %scm" % distance, 2)
