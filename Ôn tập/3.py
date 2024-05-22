@@ -16,6 +16,8 @@ def toggleLED_LCD():
 
 
 try:
+    GPIO.output(LED, GPIO.HIGH)
+    GPIO.output(LCD_BL, False)
     while True:
         toggleLED_LCD()
         time.sleep(1)
