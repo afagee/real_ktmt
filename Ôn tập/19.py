@@ -38,7 +38,7 @@ def button_1_pressed():
         speed = 0
         count = 0
 
-    if speed >= 100:
+    if speed >= 60:
         speed = 100
     motor_control(speed, 0)
 
@@ -51,7 +51,7 @@ def button_2_pressed():
         speed = 0
         count1 = 0
 
-    if speed >= 100:
+    if speed >= 60:
         speed = 100
     motor_control(speed, 1)
 
